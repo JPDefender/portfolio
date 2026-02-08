@@ -74,7 +74,7 @@ I am a Cybersecurity Engineer with over seven years of experience in technical s
 
 | Project | Description | Tools |
 |---------|-------------|-------|
-| [NIST CSF 2.0 Security Assessment](NIST%20CSF%202.0%20Assessment/NIST%20CSF%202.0%20Security%20Assessment.md) | Comprehensive security assessment of this portfolio against the NIST Cybersecurity Framework 2.0 — evaluating all six core functions (Govern, Identify, Protect, Detect, Respond, Recover) with maturity scoring, gap analysis, and an improvement roadmap. | NIST CSF 2.0, Risk Assessment |
+| [NIST CSF 2.0 Security Assessment](NIST%20CSF%202.0%20Assessment/NIST%20CSF%202.0%20Security%20Assessment.md) | Full NIST CSF 2.0 assessment of a mid-size financial services firm (Meridian Capital Partners) running Microsoft 365 E5, Entra ID, Defender XDR, Sentinel, Intune, and Azure — evaluating all six core functions (Govern, Identify, Protect, Detect, Respond, Recover) with control-level findings, maturity scoring, detection metrics, incident history, and a phased 12-month improvement roadmap. | NIST CSF 2.0, Microsoft 365 Defender, Sentinel, Entra ID |
 
 ### Security Architecture & Research
 
