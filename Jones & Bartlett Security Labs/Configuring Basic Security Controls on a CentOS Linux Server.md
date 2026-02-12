@@ -105,3 +105,86 @@ Upon completion of this lab, you are required to provide the following deliverab
 **Additional information as directed by the lab:**
 
 - Use the Internet to research Linux security hardening best practices and describe 10 recommendations.
+
+---
+
+## Lab Report — Section 1
+
+### Part 1: Boot Loader Menu
+
+The GRUB boot loader was hardened on the CentOS Linux 7 (Core) system. The boot menu was configured with a timeout of 1 second and password protection was applied to prevent unauthorized access to single-user mode and the GRUB console. The boot menu displays the following entries:
+
+- CentOS Linux 7 (Core), with Linux 3.10.0-1160.el7.x86_64
+- CentOS Linux 7 (Core), with Linux 0-rescue-\<id>
+
+The timeout was set to 1 second (`timeout=1`) in the GRUB configuration to minimize the window for unauthorized boot modification.
+
+![Boot Loader Menu](screenshots/01-boot-loader-menu.png)
+
+### Part 2: SELinux Configuration — Current Mode
+
+The SELinux configuration file (`/etc/selinux/config`) was verified to confirm SELinux is enabled and set to enforcing mode. Key configuration lines:
+
+```
+SELINUX=enforcing
+SELINUXTYPE=targeted
+```
+
+- **SELINUX=enforcing** — SELinux security policy is enforced. SELinux denies access based on policy rules.
+- **SELINUXTYPE=targeted** — Targeted processes are protected by SELinux policy. Only targeted network daemons are protected.
+
+![SELinux Configuration](screenshots/02-selinux-config.png)
+
+### Part 3: Iptables Policy List
+
+The `iptables` firewall was enabled and configured with the following ruleset (output of `iptables -L`):
+
+```
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
+ACCEPT     all  --  anywhere             anywhere             state RELATED,ESTABLISHED
+ACCEPT     icmp --  anywhere             anywhere
+ACCEPT     all  --  anywhere             anywhere
+ACCEPT     tcp  --  anywhere             anywhere             state NEW tcp dpt:ssh
+REJECT     all  --  anywhere             anywhere             reject-with icmp-host-prohibited
+
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+REJECT     all  --  anywhere             anywhere             reject-with icmp-host-prohibited
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+```
+
+This configuration:
+- Accepts established and related connections
+- Allows ICMP (ping) traffic
+- Allows loopback traffic
+- Permits new inbound SSH connections
+- Rejects all other inbound and forwarded traffic with ICMP host-prohibited
+
+![Iptables Policy List](screenshots/03-iptables-policy-list.png)
+
+### Part 4: New Command Assignments
+
+The `visudo` editor was used to configure sudo access for the `wheel` group. The following line was uncommented in the sudoers file:
+
+```
+%wheel  ALL=(ALL)       ALL
+```
+
+This grants all members of the `wheel` group the ability to execute any command as any user via `sudo`, with password authentication required. This ensures that privileged access is logged and monitored across the system.
+
+![New Command Assignments](screenshots/04-new-command-assignments.png)
+
+### Part 5: New File Attributes
+
+The immutable extended file attribute was applied and verified using `lsattr`. The output shows the `i` (immutable) flag set on a file:
+
+```
+----i----------- ./testfile
+```
+
+When the immutable attribute is set, the file cannot be modified, deleted, renamed, or linked — even by the root user — until the attribute is removed with `chattr -i`. This provides an additional layer of protection for critical files.
+
+![New File Attributes](screenshots/05-new-file-attributes.png)
