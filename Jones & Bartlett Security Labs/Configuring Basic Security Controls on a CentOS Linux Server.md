@@ -311,3 +311,334 @@ This configuration grants:
 - **%sudo group** — full sudo privileges (the standard Ubuntu mechanism, equivalent to CentOS `wheel` group)
 
 ![Sudo Command Output](screenshots/10-sudo-command-output.png)
+
+### Part 4: Warning Message in the vi Editor
+
+On TargetLinux02, the immutable file attribute was tested. A file was created and the immutable flag was set using `chattr +i`:
+
+```
+student@TargetLinux02:~$ sudo touch /tmp/s2
+student@TargetLinux02:~$ sudo chattr +i /tmp/s2
+student@TargetLinux02:~$ sudo lsattr /tmp/s2
+----i---------e--- /tmp/s2
+```
+
+When attempting to edit the immutable file with `sudo vi /tmp/s2`, the vi editor displayed a warning message indicating the file could not be modified. This demonstrates that even with root privileges via sudo, the immutable attribute enforced by the filesystem prevents any changes to the file until the attribute is explicitly removed.
+
+![Warning Message in vi Editor](screenshots/11-vi-editor-warning.png)
+
+### Part 5: Updated Permissions for the Log File
+
+Access control lists (ACLs) were applied to `/var/log/syslog` on the Xubuntu system to grant the `sudo` group read access (the Xubuntu equivalent of the CentOS `wheel` group). The `getfacl` command was used before and after the change:
+
+**Before ACL:**
+```
+# file: var/log/syslog
+# owner: syslog
+# group: adm
+user::rw-
+group::r--
+other::---
+```
+
+**ACL command applied:**
+```
+student@TargetLinux02:~$ sudo setfacl -m g:sudo:r /var/log/syslog
+```
+
+**After ACL:**
+```
+# file: var/log/syslog
+# owner: syslog
+# group: adm
+user::rw-
+group::r--
+group:sudo:r--
+mask::r--
+other::---
+```
+
+The `sudo` group now has read-only access to the syslog file, mirroring the same ACL approach used on CentOS with the `wheel` group and `/var/log/messages`.
+
+![Updated Log File Permissions — Xubuntu](screenshots/12-updated-log-permissions-xubuntu.png)
+
+---
+
+## Lab Report — Section 3
+
+### Part 1: Public and Private SSH Key
+
+An RSA 3072-bit SSH key pair was generated using `ssh-keygen`:
+
+```
+student@TargetLinux02:~$ ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/student/.ssh/id_rsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /home/student/.ssh/id_rsa
+Your public key has been saved in /home/student/.ssh/id_rsa.pub
+The key fingerprint is:
+SHA256:<fingerprint> student@TargetLinux02
+```
+
+The key pair was verified by displaying both the public and private keys:
+
+```
+student@TargetLinux02:~$ cat ~/.ssh/id_rsa.pub
+ssh-rsa AAAA... student@TargetLinux02
+
+student@TargetLinux02:~$ cat ~/.ssh/id_rsa
+-----BEGIN OPENSSH PRIVATE KEY-----
+<private key content>
+-----END OPENSSH PRIVATE KEY-----
+```
+
+The public key (`id_rsa.pub`) is shared with remote servers for authentication, while the private key (`id_rsa`) remains securely stored on the local system and should never be shared.
+
+![SSH Key Generation](screenshots/13-ssh-keygen.png)
+![SSH Key Contents](screenshots/14-ssh-key-contents.png)
+
+### Part 2: Successful SSH Connection Using SSH Keys
+
+SSH key-based authentication was configured and tested. The root login was disabled via SSH configuration and the firewall was verified:
+
+```
+student@TargetLinux02:~$ sudo grep PermitRootLogin /etc/ssh/sshd_config
+PermitRootLogin no
+
+student@TargetLinux02:~$ sudo ufw status verbose
+Status: active
+Default: deny (incoming), allow (outgoing), disabled (routed)
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere
+22/tcp (v6)                ALLOW IN    Anywhere (v6)
+```
+
+This confirms that SSH is allowed through the firewall on port 22, while direct root login is disabled — forcing users to authenticate with SSH keys and then escalate privileges via `sudo` as needed.
+
+![SSH Connection and Verification](screenshots/15-ssh-connection.png)
+
+### Written Response: Linux Security Hardening Best Practices
+
+#### How SELinux Works, Its Benefits, and Why It Should Remain Enabled
+
+SELinux is a mandatory access control system that enforces what processes can actually do on your system, creating a critical safety net that traditional permissions can't provide. Even if an attacker compromises a service or gains root access, SELinux restricts that process to only the resources it's supposed to touch — a hacked web server can't suddenly read SSH keys or modify system configurations because the policy simply won't allow it. Yes, it's frustrating when it blocks legitimate operations and forces you to troubleshoot obscure denials, but those "annoying" restrictions are exactly what contains a breach when something inevitably goes wrong. Every internet-facing server is under constant attack, and SELinux is often the difference between a minor incident and complete system compromise. Disabling it for convenience is like removing your seatbelt because it's uncomfortable — the temporary relief isn't worth the catastrophic risk. For anyone running production servers, especially those handling sensitive data or operating in regulated environments, keeping SELinux enabled isn't just best practice, it's essential. Learn to work with it rather than fight it, and you'll have a security foundation that actually holds up when it matters most.
+
+#### 10 Linux Security Hardening Recommendations
+
+**Recommendation 1: Disable Root SSH Login**
+
+*Why:* Prevents attackers from directly logging in as root over SSH, forcing them to first compromise a regular user account.
+
+*Steps:*
+
+1. Edit the SSH configuration:
+   ```bash
+   sudo nano /etc/ssh/sshd_config
+   ```
+2. Find the line `PermitRootLogin` and change it to:
+   ```
+   PermitRootLogin no
+   ```
+3. Save and exit (Ctrl+O, Enter, Ctrl+X).
+4. Restart SSH:
+   ```bash
+   sudo systemctl restart sshd
+   ```
+5. Verify:
+   ```bash
+   sudo grep PermitRootLogin /etc/ssh/sshd_config
+   ```
+
+**Recommendation 2: Enable Automatic Security Updates**
+
+*Why:* Automatically installs security patches to keep the system protected.
+
+*Steps:*
+
+1. Install the package:
+   ```bash
+   sudo apt update
+   sudo apt install unattended-upgrades -y
+   ```
+2. Enable automatic updates:
+   ```bash
+   sudo dpkg-reconfigure -plow unattended-upgrades
+   ```
+   (Select "Yes")
+3. Verify it's running:
+   ```bash
+   sudo systemctl status unattended-upgrades
+   ```
+
+**Recommendation 3: Configure Firewall (UFW)**
+
+*Why:* Blocks all incoming traffic except what you specifically allow.
+
+*Steps:*
+
+1. Install UFW:
+   ```bash
+   sudo apt install ufw -y
+   ```
+2. Set default rules:
+   ```bash
+   sudo ufw default deny incoming
+   sudo ufw default allow outgoing
+   ```
+3. Allow SSH (important — do this before enabling!):
+   ```bash
+   sudo ufw allow ssh
+   ```
+4. Enable the firewall:
+   ```bash
+   sudo ufw enable
+   ```
+   (Type "y" to confirm)
+5. Check status:
+   ```bash
+   sudo ufw status verbose
+   ```
+
+**Recommendation 4: Enforce Strong Password Policies**
+
+*Why:* Weak passwords are one of the most common attack vectors. Strong password policies reduce the risk of brute-force attacks.
+
+*Steps:*
+
+1. Install the PAM password quality module:
+   ```bash
+   sudo apt install libpam-pwquality -y
+   ```
+2. Configure password requirements in `/etc/security/pwquality.conf`:
+   ```
+   minlen = 12
+   dcredit = -1
+   ucredit = -1
+   lcredit = -1
+   ocredit = -1
+   ```
+
+**Recommendation 5: Disable Unused Services**
+
+*Why:* Every running service is a potential attack surface. Disabling unnecessary services reduces exposure.
+
+*Steps:*
+
+1. List active services:
+   ```bash
+   sudo systemctl list-units --type=service --state=active
+   ```
+2. Disable unnecessary services:
+   ```bash
+   sudo systemctl disable <service-name>
+   sudo systemctl stop <service-name>
+   ```
+
+**Recommendation 6: Configure SSH Key-Based Authentication**
+
+*Why:* SSH keys are far more secure than passwords, as they are nearly impossible to brute-force.
+
+*Steps:*
+
+1. Generate a key pair:
+   ```bash
+   ssh-keygen -t rsa -b 4096
+   ```
+2. Copy the public key to the server:
+   ```bash
+   ssh-copy-id user@server
+   ```
+3. Disable password authentication in `/etc/ssh/sshd_config`:
+   ```
+   PasswordAuthentication no
+   ```
+4. Restart SSH:
+   ```bash
+   sudo systemctl restart sshd
+   ```
+
+**Recommendation 7: Enable Audit Logging (auditd)**
+
+*Why:* Provides detailed logs of system events for security monitoring and forensic investigation.
+
+*Steps:*
+
+1. Install auditd:
+   ```bash
+   sudo apt install auditd -y
+   ```
+2. Enable and start the service:
+   ```bash
+   sudo systemctl enable auditd
+   sudo systemctl start auditd
+   ```
+3. Add audit rules (e.g., monitor `/etc/passwd`):
+   ```bash
+   sudo auditctl -w /etc/passwd -p wa -k passwd_changes
+   ```
+
+**Recommendation 8: Implement File Integrity Monitoring (AIDE)**
+
+*Why:* Detects unauthorized changes to critical system files, alerting administrators to potential compromise.
+
+*Steps:*
+
+1. Install AIDE:
+   ```bash
+   sudo apt install aide -y
+   ```
+2. Initialize the database:
+   ```bash
+   sudo aideinit
+   ```
+3. Run a check:
+   ```bash
+   sudo aide --check
+   ```
+
+**Recommendation 9: Set Up Fail2Ban**
+
+*Why:* Automatically bans IP addresses that show malicious behavior (e.g., repeated failed login attempts).
+
+*Steps:*
+
+1. Install Fail2Ban:
+   ```bash
+   sudo apt install fail2ban -y
+   ```
+2. Create a local configuration:
+   ```bash
+   sudo cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+   ```
+3. Enable and start:
+   ```bash
+   sudo systemctl enable fail2ban
+   sudo systemctl start fail2ban
+   ```
+4. Check status:
+   ```bash
+   sudo fail2ban-client status sshd
+   ```
+
+**Recommendation 10: Restrict Kernel Parameters with sysctl**
+
+*Why:* Hardens the network stack and kernel behavior to prevent common attacks like IP spoofing and SYN floods.
+
+*Steps:*
+
+1. Edit `/etc/sysctl.conf` and add:
+   ```
+   net.ipv4.conf.all.rp_filter = 1
+   net.ipv4.conf.default.rp_filter = 1
+   net.ipv4.tcp_syncookies = 1
+   net.ipv4.conf.all.accept_redirects = 0
+   net.ipv4.conf.all.send_redirects = 0
+   net.ipv4.icmp_echo_ignore_broadcasts = 1
+   ```
+2. Apply the changes:
+   ```bash
+   sudo sysctl -p
+   ```
