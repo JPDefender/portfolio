@@ -188,3 +188,126 @@ The immutable extended file attribute was applied and verified using `lsattr`. T
 When the immutable attribute is set, the file cannot be modified, deleted, renamed, or linked — even by the root user — until the attribute is removed with `chattr -i`. This provides an additional layer of protection for critical files.
 
 ![New File Attributes](screenshots/05-new-file-attributes.png)
+
+### Part 6: Result of the ls Command and File Operations
+
+A new student user was created and added to the `wheel` group, and file operations were performed to demonstrate attribute controls:
+
+```
+[root@TargetLinux01 ~]# useradd -G wheel student
+[root@TargetLinux01 ~]# passwd student
+[root@TargetLinux01 ~]# touch /tmp/mytest
+[root@TargetLinux01 ~]# chattr +i /tmp/mytest
+[root@TargetLinux01 ~]# lsattr /tmp/mytest
+----i----------- /tmp/mytest
+[root@TargetLinux01 ~]# rm /tmp/mytest
+rm: cannot remove '/tmp/mytest': Operation not permitted
+[root@TargetLinux01 ~]# mv /tmp/mytest /tmp/mytest2
+mv: cannot move '/tmp/mytest' to '/tmp/mytest2': Operation not permitted
+```
+
+The immutable attribute prevented both deletion (`rm`) and renaming (`mv`) of the file, demonstrating the enforcement of extended file attributes on the system.
+
+![Result of ls Command](screenshots/06-ls-command-result.png)
+
+### Part 7: Updated Permissions for the Log File
+
+Access control lists (ACLs) were applied to `/var/log/messages` to grant the `wheel` group read access. The `getfacl` command was used before and after the change to verify:
+
+**Before ACL:**
+```
+# file: var/log/messages
+# owner: root
+# group: root
+user::rw-
+group::---
+other::---
+```
+
+**ACL command applied:**
+```
+[root@TargetLinux01 ~]# setfacl -m g:wheel:r /var/log/messages
+```
+
+**After ACL:**
+```
+# file: var/log/messages
+# owner: root
+# group: root
+user::rw-
+group::---
+group:wheel:r--
+mask::r--
+other::---
+```
+
+The `wheel` group now has read-only access to the system log file, allowing members of the group to review logs for monitoring purposes without granting write or execute permissions.
+
+![Updated Log File Permissions](screenshots/07-updated-log-permissions.png)
+
+---
+
+## Lab Report — Section 2
+
+### Part 1: Yourname in the Updated grub.cfg File
+
+On the TargetLinux02 (Xubuntu) system, the GRUB configuration was updated to set a superuser with password protection. The `grub.cfg` file shows:
+
+```
+set superusers="jacobphillips"
+password_pbkdf2 jacobphillips grub.pbkdf2.sha512.10000.<hash>
+```
+
+This configures GRUB to require the `jacobphillips` superuser credentials before allowing access to edit boot entries or access the GRUB console, preventing unauthorized boot sequence modifications.
+
+![Grub.cfg Superuser](screenshots/08-grub-cfg-superuser.png)
+
+### Part 2: Iptables -nvL Output and UFW Status
+
+On the TargetLinux02 (Xubuntu) system, the firewall was configured using both iptables and UFW (Uncomplicated Firewall):
+
+**iptables -nvL output (before UFW):**
+```
+Chain INPUT (policy ACCEPT)
+ pkts bytes target     prot opt in     out     source               destination
+
+Chain FORWARD (policy ACCEPT)
+ pkts bytes target     prot opt in     out     source               destination
+
+Chain OUTPUT (policy ACCEPT)
+ pkts bytes target     prot opt in     out     source               destination
+```
+
+**UFW enabled and status:**
+```
+student@TargetLinux02:~$ sudo ufw enable
+Firewall is active and enabled on system startup
+student@TargetLinux02:~$ sudo ufw status
+Status: active
+```
+
+UFW was enabled to provide a simplified interface for managing iptables rules on the Xubuntu system, complementing the direct iptables configuration used on CentOS.
+
+![Iptables and UFW Status](screenshots/09-iptables-ufw-status.png)
+
+### Part 3: Sudo Command Output
+
+The sudoers configuration on TargetLinux02 was reviewed, showing the default Ubuntu/Xubuntu sudo group configuration:
+
+```
+# User privilege specification
+root    ALL=(ALL:ALL) ALL
+
+# Members of the admin group may gain root privileges
+%admin ALL=(ALL) ALL
+
+# Allow members of group sudo to execute any command
+%sudo   ALL=(ALL:ALL) ALL
+```
+
+This configuration grants:
+- **root** — full sudo privileges
+- **%admin group** — full sudo privileges for legacy compatibility
+- **%sudo group** — full sudo privileges (the standard Ubuntu mechanism, equivalent to CentOS `wheel` group)
+
+![Sudo Command Output](screenshots/10-sudo-command-output.png)
