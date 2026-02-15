@@ -92,6 +92,13 @@ I am a Cybersecurity Engineer with over seven years of experience in technical s
 | [Python Security Toolkit](Python%20Security%20Toolkit/Python%20Security%20Toolkit.md) | Collection of practical security automation scripts — IOC scanner for hash-based threat detection, auth log analyzer with brute force detection, network reconnaissance scanner, and phishing URL analyzer with risk scoring. Includes sample data for testing. | Python, Hashlib, Socket, Argparse |
 | [PowerShell Azure Security Audit](PowerShell%20Azure%20Security%20Audit/Azure%20Security%20Audit.md) | Enterprise Azure security audit toolkit — NSG misconfiguration detection, Storage Account security assessment, Azure AD/Entra ID identity audit (MFA gaps, stale accounts, privileged access review), and unified HTML posture report with automated scheduling. | PowerShell, Az Module, Microsoft Graph, Azure |
 
+### Identity & Access Management (IAM)
+
+| Project | Description | Tools |
+|---------|-------------|-------|
+| [Logic App Access Review Automation](IAM/Logic%20App%20Access%20Review%20Automation/Logic%20App%20Access%20Review%20Automation.md) | Azure Logic App workflow that auto-pulls Entra ID role assignments and guest accounts via Microsoft Graph, sends structured approval emails to reviewers 30 days before expiration, escalates with manager CC at 7 days, and logs all actions to SharePoint for audit evidence. | Azure Logic Apps, Microsoft Graph API, Entra ID, Office 365 |
+| [PowerShell Group Membership Review](IAM/PowerShell%20Group%20Membership%20Review/PowerShell%20Group%20Membership%20Review.md) | PowerShell script for monthly Entra ID security group audits — enumerates members, flags stale/disabled/guest accounts, detects nested group inheritance, and generates HTML reports with compliance mapping to NIST 800-53, SOX, and PCI DSS. | PowerShell, Microsoft Graph SDK, Entra ID |
+
 ### Detection Engineering & Threat Hunting
 
 | Project | Description | Tools |
